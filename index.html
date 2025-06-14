@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente Avanzado de Estadística para Investigación</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Estilos personalizados para complementar Tailwind */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f2f5; /* Un gris más suave */
+        }
+
+        /* Estilo para los tooltips (bocadillos de ayuda) */
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            width: 240px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%; /* Posiciona el tooltip encima del elemento */
+            left: 50%;
+            margin-left: -120px; /* Centra el tooltip */
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.8rem;
+            font-weight: 400;
+        }
+
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Animación de entrada para las secciones */
+        .fade-in {
+            animation: fadeInAnimation 0.5s ease-in-out forwards;
+        }
+
+        @keyframes fadeInAnimation {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Estilos del Modal */
+        .modal-overlay {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+
+        /* Estilo para la impresión */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #result-section, #result-section * {
+                visibility: visible;
+            }
+            #result-section {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 1rem;
+            }
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <main class="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
+        <div id="app-container" class="max-w-3xl mx-auto bg-white rounded-xl shadow-2xl p-6 sm:p-8 transition-all duration-300">
+            
+            <!-- Pantalla de Inicio -->
+            <section id="start-section" class="text-center">
+                <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-2">Asistente de Estadística</h1>
+                <p class="text-gray-600 mb-6">Te guiaré paso a paso para que elijas la prueba estadística correcta para tu investigación, de forma rigurosa y sencilla.</p>
+                <button id="start-button" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                    Comenzar Planificación
+                </button>
+                 <p id="resume-text" class="text-sm text-gray-500 mt-4 hidden">Detectamos un progreso guardado. <a href="#" id="resume-link" class="text-blue-600 hover:underline">Haz clic aquí para continuar</a>.</p>
+            </section>
+
+            <!-- Sección de Preguntas -->
+            <section id="question-section" class="hidden">
+                <div class="mb-4">
+                    <h2 id="question-text" class="text-2xl font-semibold text-gray-800"></h2>
+                </div>
+
+                <div id="options-form" class="space-y-4 mb-6">
+                    <!-- Opciones generadas dinámicamente -->
+                </div>
+                
+                <!-- Mensaje de error/alerta -->
+                <div id="message-box" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4" role="alert">
+                    <span class="block sm:inline" id="message-text"></span>
+                </div>
+
+                <!-- Barra de Progreso -->
+                <div class="w-full bg-gray-200 rounded-full h-2.5 mb-6">
+                    <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+
+                <!-- Botones de Navegación -->
+                <div class="flex justify-between items-center">
+                    <button id="back-button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">
+                        Volver
+                    </button>
+                    <button id="next-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+                        Siguiente
+                    </button>
+                </div>
+            </section>
+
+            <!-- Sección de Resultado -->
+            <section id="result-section" class="hidden">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4 text-center">Tu Plan Estadístico Recomendado</h2>
+                <div id="result-content" class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                    <h3 id="result-title" class="text-2xl font-semibold text-blue-700 mb-3"></h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="font-semibold text-gray-700">Descripción:</h4>
+                            <p id="result-description" class="text-gray-600"></p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-700">Supuestos Clave:</h4>
+                            <p id="result-assumptions" class="text-gray-600"></p>
+                        </div>
+                        <div id="how-to-check-container" class="hidden">
+                             <h4 class="font-semibold text-gray-700">¿Cómo comprobar los supuestos?:</h4>
+                            <p id="result-how-to-check" class="text-gray-600"></p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-700">Software Recomendado:</h4>
+                            <p id="result-software" class="text-gray-600"></p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-700">Recursos Adicionales:</h4>
+                            <div id="result-resources"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Acciones -->
+                <div class="mt-8 flex flex-col sm:flex-row justify-center gap-4 no-print">
+                    <button id="copy-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" /><path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2H6z" /></svg>
+                        <span id="copy-button-text">Copiar al Portapapeles</span>
+                    </button>
+                     <button id="print-button" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v3a2 2 0 002 2h6a2 2 0 002-2v-3h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7a1 1 0 00-1 1v3h8V5a1 1 0 00-1-1zM5 9a1 1 0 00-1 1v3a1 1 0 001 1h10a1 1 0 001-1v-3a1 1 0 00-1-1H5z" clip-rule="evenodd" /></svg>
+                        Imprimir / Guardar PDF
+                    </button>
+                    <button id="restart-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" /></svg>
+                        Reiniciar
+                    </button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-4 px-4 bg-white border-t border-gray-200 no-print">
+        <p class="text-sm text-gray-500">&copy; <span id="current-year"></span> Aitor Garcés Manzanera | Versión Mejorada por IA.
+        <a href="https://aitor-garces.webnode.es" target="_blank" rel="noopener" class="text-blue-600 hover:underline">Web Original</a></p>
+    </footer>
+
+    <!-- Modal de Confirmación para Reiniciar -->
+    <div id="restart-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 hidden modal-overlay">
+        <div class="relative mx-auto p-5 border w-11/12 max-w-md shadow-lg rounded-xl bg-white modal-content">
+            <div class="mt-3 text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                    <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                </div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">¿Reiniciar Asistente?</h3>
+                <div class="mt-2 px-7 py-3">
+                    <p class="text-sm text-gray-500">
+                        Se borrará todo tu progreso actual y volverás al inicio. ¿Estás seguro?
+                    </p>
+                </div>
+                <div class="items-center px-4 py-3 flex justify-center gap-4">
+                    <button id="confirm-restart" class="px-4 py-2 bg-red-600 text-white text-base font-medium rounded-md w-auto shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                        Sí, reiniciar
+                    </button>
+                    <button id="cancel-restart" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md w-auto shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Lógica JavaScript -->
+    <script>
+        // IIFE para encapsular la lógica y evitar colisiones en el scope global
+        (function() {
+            // --- 1. REFERENCIAS A ELEMENTOS DEL DOM ---
+            const dom = {
+                startSection: document.getElementById('start-section'),
+                questionSection: document.getElementById('question-section'),
+                resultSection: document.getElementById('result-section'),
+                startButton: document.getElementById('start-button'),
+                questionText: document.getElementById('question-text'),
+                optionsForm: document.getElementById('options-form'),
+                progressBar: document.getElementById('progress-bar'),
+                backButton: document.getElementById('back-button'),
+                nextButton: document.getElementById('next-button'),
+                resultContent: document.getElementById('result-content'),
+                resultTitle: document.getElementById('result-title'),
+                resultDescription: document.getElementById('result-description'),
+                resultAssumptions: document.getElementById('result-assumptions'),
+                howToCheckContainer: document.getElementById('how-to-check-container'),
+                resultHowToCheck: document.getElementById('result-how-to-check'),
+                resultSoftware: document.getElementById('result-software'),
+                resultResources: document.getElementById('result-resources'),
+                restartButton: document.getElementById('restart-button'),
+                copyButton: document.getElementById('copy-button'),
+                copyButtonText: document.getElementById('copy-button-text'),
+                printButton: document.getElementById('print-button'),
+                messageBox: document.getElementById('message-box'),
+                messageText: document.getElementById('message-text'),
+                resumeText: document.getElementById('resume-text'),
+                resumeLink: document.getElementById('resume-link'),
+                currentYear: document.getElementById('current-year'),
+                // Modal
+                restartModal: document.getElementById('restart-modal'),
+                confirmRestart: document.getElementById('confirm-restart'),
+                cancelRestart: document.getElementById('cancel-restart')
+            };
+
+            // --- 2. ESTADO DE LA APLICACIÓN ---
+            let state = {
+                currentQuestionId: null,
+                answers: [], // Historial de respuestas para poder navegar hacia atrás
+                userInputs: {}, // Almacena valores introducidos por el usuario
+                totalQuestions: 8 // Estimación de preguntas en la ruta más larga
+            };
+
+            // --- 3. DATOS: PREGUNTAS Y RESULTADOS ---
+            
+            const createTooltip = (text) => `
+                <div class="tooltip-container">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block text-blue-500 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="tooltip-text">${text}</span>
+                </div>`;
+            
+            const questions = {
+                q_initial: {
+                    id: 'q_initial',
+                    text: "Antes de seleccionar una prueba, ¿qué deseas hacer?",
+                    type: 'radio',
+                    options: [
+                        { text: "Explorar y describir mis datos", next: 'q_describe_what_var' },
+                        { text: "Ir directamente a elegir una prueba de hipótesis", next: 'q_objective' }
+                    ]
+                },
+                 q_describe_what_var: {
+                    id: 'q_describe_what_var',
+                    text: "¿Qué tipo de variable principal quieres describir?",
+                    type: 'radio',
+                    options: [
+                        { text: `Categórica / Cualitativa ${createTooltip('La variable agrupa en categorías. Ej: Género (Hombre, Mujer), Nivel Educativo (Básico, Medio, Superior).')}`, next: 'res_describe_categorical' },
+                        { text: `Numérica / Cuantitativa ${createTooltip('La variable es un número que se puede medir. Ej: Edad, Puntuación en un test, Altura.')}`, next: 'res_describe_numerical' }
+                    ]
+                },
+                q_objective: {
+                    id: 'q_objective',
+                    text: "¿Cuál es el objetivo principal de tu análisis de hipótesis?",
+                    type: 'radio',
+                    options: [
+                        { text: "Comparar grupos", next: 'q_compare_groups' },
+                        { text: "Relacionar o asociar variables", next: 'q_relate_vars' },
+                        { text: "Predecir el valor de una variable", next: 'q_predict_vars_how_many' },
+                        { text: "Analizar la fiabilidad de un test/escala", next: 'q_reliability' },
+                        { text: "Explorar la estructura de tus datos (Análisis Factorial)", next: 'q_factor_analysis' }
+                    ]
+                },
+                q_compare_groups: {
+                    id: 'q_compare_groups',
+                    text: "¿Las mediciones en los grupos son independientes o relacionadas?",
+                    type: 'radio',
+                    options: [
+                        { text: `Independientes ${createTooltip('Cada participante pertenece a un único grupo. Ej: Grupo Control vs. Grupo Tratamiento.')}`, next: 'q_n_independent' },
+                        { text: `Relacionadas / Medidas Repetidas ${createTooltip('Los mismos participantes son medidos en diferentes momentos o condiciones. Ej: Pre-test y Post-test.')}`, next: 'q_n_related' }
+                    ]
+                },
+                q_n_independent: {
+                    id: 'q_n_independent',
+                    text: "¿Cuántos grupos independientes (N) quieres comparar?",
+                    type: 'numberInput', placeholder: "Ej: 3", min: 2,
+                    next: (value) => value == 2 ? 'q_check_assumptions_ttest' : 'q_check_assumptions_anova'
+                },
+                q_n_related: {
+                    id: 'q_n_related',
+                    text: "¿Cuántas mediciones relacionadas (momentos/condiciones) tienes?",
+                    type: 'numberInput', placeholder: "Ej: 2", min: 2,
+                    next: (value) => value == 2 ? 'q_check_assumptions_ttest_related' : 'q_check_assumptions_rm_anova'
+                },
+                q_check_assumptions_ttest: {
+                    id: 'q_check_assumptions_ttest',
+                    text: `¿Has comprobado los supuestos para una prueba paramétrica? ${createTooltip('Normalidad (ej. test Shapiro-Wilk) y Homogeneidad de varianzas (ej. test de Levene).')}`,
+                    type: 'radio',
+                    options: [
+                        { text: "Sí, y se cumplen", next: 'res_t_test_independent' },
+                        { text: "Sí, pero NO se cumplen", next: 'res_mann_whitney' },
+                        { text: "No, necesito ayuda para comprobarlos", next: 'res_how_to_check_ttest' }
+                    ]
+                },
+                q_check_assumptions_anova: {
+                    id: 'q_check_assumptions_anova',
+                    text: `¿Has comprobado los supuestos para una prueba paramétrica? ${createTooltip('Normalidad (ej. test Shapiro-Wilk en cada grupo) y Homogeneidad de varianzas (ej. test de Levene).')}`,
+                    type: 'radio',
+                    options: [
+                        { text: "Sí, y se cumplen", next: 'q_ancova_check' },
+                        { text: "Sí, pero NO se cumplen", next: 'res_kruskal_wallis' },
+                        { text: "No, necesito ayuda para comprobarlos", next: 'res_how_to_check_anova' }
+                    ]
+                },
+                q_ancova_check: {
+                    id: 'q_ancova_check',
+                    text: `¿Existe alguna otra variable numérica (covariable) que podría influir en tu variable de resultado y que quisieras controlar? ${createTooltip('Ej: quieres comparar el efecto de dos métodos de enseñanza en las notas, pero quieres controlar por el CI previo de los estudiantes.')}`,
+                    type: 'radio',
+                    options: [
+                        { text: "Sí, quiero controlar una covariable", next: 'res_ancova'},
+                        { text: "No, solo quiero comparar los grupos", next: 'res_anova_oneway'}
+                    ]
+                },
+                q_check_assumptions_ttest_related: {
+                    id: 'q_check_assumptions_ttest_related',
+                    text: `¿Has comprobado si las diferencias entre las mediciones siguen una distribución normal? ${createTooltip('Calcula la diferencia (Post - Pre) y realiza un test de normalidad (ej. Shapiro-Wilk) sobre esas diferencias.')}`,
+                    type: 'radio',
+                    options: [
+                        { text: "Sí, las diferencias son normales", next: 'res_t_test_related' },
+                        { text: "No, las diferencias no son normales", next: 'res_wilcoxon' },
+                        { text: "No, necesito ayuda para comprobarlo", next: 'res_how_to_check_ttest_related' }
+                    ]
+                },
+                q_check_assumptions_rm_anova: {
+                    id: 'q_check_assumptions_rm_anova',
+                    text: `¿Has comprobado los supuestos de normalidad y esfericidad? ${createTooltip('La esfericidad (Test de Mauchly) es crucial. Si p > .05, se cumple. Si no, se necesitan correcciones.')}`,
+                    type: 'radio',
+                    options: [
+                        { text: "Sí, y se cumplen", next: 'res_rm_anova' },
+                        { text: "Sí, pero NO se cumplen", next: 'res_friedman' },
+                        { text: "No, necesito ayuda para comprobarlos", next: 'res_how_to_check_rm_anova' }
+                    ]
+                },
+                q_relate_vars: {
+                    id: 'q_relate_vars',
+                    text: "¿Qué tipo de variables quieres relacionar?",
+                    type: 'radio',
+                    options: [
+                        { text: "Dos variables numéricas/cuantitativas", next: 'q_relate_continuous' },
+                        { text: "Dos variables ordinales (o numéricas no paramétricas)", next: 'q_relate_ordinal' },
+                        { text: "Dos variables categóricas/nominales", next: 'res_chi_square' }
+                    ]
+                },
+                q_relate_continuous: {
+                    id: 'q_relate_continuous',
+                    text: `¿La relación es lineal y los datos son paramétricos? ${createTooltip('Un diagrama de dispersión ayuda a ver la linealidad. La normalidad se puede comprobar con tests como Shapiro-Wilk.')}`,
+                    type: 'radio',
+                    options: [
+                        { text: "Sí", next: 'q_partial_corr_check' },
+                        { text: "No", next: 'q_partial_corr_check_spearman' }
+                    ]
+                },
+                 q_relate_ordinal: {
+                    id: 'q_relate_ordinal',
+                    text: `Vas a usar una correlación de Spearman. ¿Quieres examinar la relación entre tus dos variables controlando el efecto de una tercera? ${createTooltip('Esto te permite aislar la relación de interés, eliminando la influencia de una variable confusora.')}`,
+                    type: 'radio',
+                    options: [
+                        { text: "Sí, quiero controlar una tercera variable", next: 'res_partial_spearman' },
+                        { text: "No, solo quiero la relación entre las dos", next: 'res_spearman' }
+                    ]
+                },
+                q_partial_corr_check: {
+                    id: 'q_partial_corr_check',
+                    text: `Vas a usar una correlación de Pearson. ¿Quieres examinar la relación entre tus dos variables controlando el efecto de una tercera? ${createTooltip('Esto te permite aislar la relación de interés, eliminando la influencia de una variable confusora.')}`,
+                    type: 'radio',
+                    options: [
+                        { text: "Sí, quiero controlar una tercera variable", next: 'res_partial_pearson' },
+                        { text: "No, solo quiero la relación entre las dos", next: 'res_pearson' }
+                    ]
+                },
+                 q_partial_corr_check_spearman: { // Duplicado para la ruta no paramétrica
+                    id: 'q_partial_corr_check_spearman',
+                    text: `Vas a usar una correlación de Spearman. ¿Quieres examinar la relación entre tus dos variables controlando el efecto de una tercera? ${createTooltip('Esto te permite aislar la relación de interés, eliminando la influencia de una variable confusora.')}`,
+                    type: 'radio',
+                    options: [
+                        { text: "Sí, quiero controlar una tercera variable", next: 'res_partial_spearman' },
+                        { text: "No, solo quiero la relación entre las dos", next: 'res_spearman' }
+                    ]
+                },
+                q_predict_vars_how_many: {
+                    id: 'q_predict_vars_how_many',
+                    text: "¿Cuántas variables predictoras (independientes) usarás?",
+                     type: 'radio',
+                    options: [
+                        { text: `Una sola variable predictora ${createTooltip('Ej: Predecir las notas (numérica) usando solo las horas de estudio (numérica).')}`, next: 'q_predict_var_type' },
+                        { text: `Dos o más variables predictoras ${createTooltip('Ej: Predecir las notas usando horas de estudio, CI y motivación.')}`, next: 'q_predict_var_type_multiple' }
+                    ]
+                },
+                q_predict_var_type: {
+                    id: 'q_predict_var_type',
+                    text: "¿Qué tipo de variable quieres predecir (dependiente)?",
+                    type: 'radio',
+                    options: [
+                        { text: "Una variable continua (Regresión Lineal Simple)", next: 'res_linear_regression_simple' },
+                        { text: "Una variable categórica (Regresión Logística Simple)", next: 'res_logistic_regression_simple' }
+                    ]
+                },
+                 q_predict_var_type_multiple: {
+                    id: 'q_predict_var_type_multiple',
+                    text: "¿Qué tipo de variable quieres predecir (dependiente)?",
+                    type: 'radio',
+                    options: [
+                        { text: "Una variable continua (Regresión Lineal Múltiple)", next: 'res_linear_regression_multiple' },
+                        { text: "Una variable categórica (Regresión Logística Múltiple)", next: 'res_logistic_regression_multiple' }
+                    ]
+                },
+                q_reliability: {
+                    id: 'q_reliability', text: "¿Qué tipo de fiabilidad quieres medir?", type: 'radio',
+                    options: [
+                        { text: `Consistencia interna de una escala ${createTooltip('Evalúa si los ítems de un test miden el mismo constructo. Típicamente se usa en cuestionarios tipo Likert.')}`, next: 'res_cronbach_alpha' },
+                        { text: `Concordancia entre dos observadores/jueces ${createTooltip('Mide el acuerdo entre dos personas que califican las mismas cosas en categorías.')}`, next: 'res_cohen_kappa' },
+                    ]
+                },
+                q_factor_analysis: {
+                    id: 'q_factor_analysis', text: "¿Tu análisis factorial es exploratorio o confirmatorio?", type: 'radio',
+                     options: [
+                        { text: `Exploratorio (AFE) ${createTooltip('No tienes una teoría previa sobre cuántos factores existen. Quieres explorar la estructura subyacente de los datos.')}`, next: 'res_efa' },
+                        { text: `Confirmatorio (AFC) ${createTooltip('Tienes una hipótesis clara basada en teoría previa sobre la estructura de los factores y quieres confirmarla.')}`, next: 'res_cfa' }
+                    ]
+                }
+            };
+
+            const results = {
+                // --- Resultados de Análisis Descriptivo ---
+                res_describe_categorical: { title: "Análisis Descriptivo para Variable Categórica", description: "Para entender la distribución de una variable que agrupa en categorías, debes centrarte en las frecuencias.", assumptions: "No se requieren supuestos. Este es un paso exploratorio.", howToCheck: "", software: "Cualquier software estadístico (SPSS, R, Python, Excel, JASP, Jamovi) puede generar esto fácilmente.", resources: "<ul><li><b>Tabla de Frecuencias:</b> Muestra el recuento (N) y el porcentaje (%) de casos en cada categoría.</li><li><b>Gráfico de Barras:</b> Representación visual de las frecuencias de cada categoría. Ideal para comparar.</li><li><b>Gráfico Circular (Pastel):</b> Muestra la proporción de cada categoría sobre el total. Usar con pocas categorías.</li></ul>" },
+                res_describe_numerical: { title: "Análisis Descriptivo para Variable Numérica", description: "Para una variable numérica, debes examinar su tendencia central, dispersión y forma de la distribución.", assumptions: "No hay supuestos para describir, pero este paso es CLAVE para luego verificar los supuestos de otras pruebas (como la normalidad).", howToCheck: "", software: "SPSS, R, Python, JASP, Jamovi.", resources: "<ul><li><b>Medidas de Tendencia Central:</b> Media (promedio), Mediana (valor central).</li><li><b>Medidas de Dispersión:</b> Desviación Estándar (cuánto varían los datos respecto a la media), Rango (diferencia entre el máximo y el mínimo).</li><li><b>Visualización:</b> Un <b>Histograma</b> es esencial para ver la forma de la distribución. Un <b>Gráfico de Cajas (Box Plot)</b> es excelente para ver la mediana, los cuartiles y detectar valores atípicos (outliers).</li></ul>" },
+                // --- Resultados de Cómo Comprobar Supuestos ---
+                res_how_to_check_ttest: { title: "Comprobación de Supuestos (Prueba t Indep.)", description: "Antes de realizar una Prueba t, debes asegurarte de que tus datos cumplen dos condiciones clave. Realiza las siguientes pruebas en tu software estadístico:", assumptions: "El objetivo es que ambas pruebas no sean estadísticamente significativas (es decir, p > 0.05).", howToCheckTitle: "Pruebas a realizar:", howToCheck: "<b>1. Normalidad:</b> Usa la <b>Prueba de Shapiro-Wilk</b> para cada uno de tus dos grupos. Si p > .05 en ambos, se asume normalidad.<br><b>2. Homogeneidad de Varianzas:</b> Usa la <b>Prueba de Levene</b>. Si p > .05, las varianzas son homogéneas (iguales).<br><br><b>Decisión:</b> Si ambos supuestos se cumplen, procede con la <b>Prueba t</b>. Si alguno no se cumple, deberías usar la alternativa no paramétrica: la <b>Prueba U de Mann-Whitney</b>.", software: "SPSS, R, Python, JASP, Jamovi.", resources: "" },
+                res_how_to_check_anova: { title: "Comprobación de Supuestos (ANOVA)", description: "Para un ANOVA, los supuestos son similares a la Prueba t. Realiza las siguientes pruebas en tu software:", assumptions: "El objetivo es que ambas pruebas no sean estadísticamente significativas (es decir, p > 0.05).", howToCheckTitle: "Pruebas a realizar:", howToCheck: "<b>1. Normalidad:</b> Usa la <b>Prueba de Shapiro-Wilk</b> en cada uno de tus grupos. Todos deben cumplir p > .05.<br><b>2. Homogeneidad de Varianzas:</b> Usa la <b>Prueba de Levene</b> para todos los grupos a la vez. Si p > .05, las varianzas son homogéneas.<br><br><b>Decisión:</b> Si ambos supuestos se cumplen, procede con el <b>ANOVA</b>. Si alguno no se cumple, usa la alternativa no paramétrica: la <b>Prueba de Kruskal-Wallis</b>.", software: "SPSS, R, Python, JASP, Jamovi.", resources: "" },
+                res_how_to_check_ttest_related: { title: "Comprobación de Supuestos (Prueba t Relac.)", description: "Para una Prueba t de muestras relacionadas, el supuesto de normalidad se aplica a las diferencias entre las mediciones.", assumptions: "El objetivo es que la prueba no sea estadísticamente significativa (p > 0.05).", howToCheckTitle: "Pasos a seguir:", howToCheck: "1. Crea una nueva variable que sea la resta de las dos mediciones (ej. Puntuación Post-Test - Puntuación Pre-Test).<br>2. Realiza una <b>Prueba de Shapiro-Wilk</b> sobre esa nueva variable de diferencias.<br><br><b>Decisión:</b> Si p > .05, el supuesto se cumple y puedes usar la <b>Prueba t para muestras relacionadas</b>. Si p <= .05, debes usar la alternativa no paramétrica: la <b>Prueba de Wilcoxon</b>.", software: "SPSS, R, Python, JASP, Jamovi.", resources: "" },
+                res_how_to_check_rm_anova: { title: "Comprobación de Supuestos (ANOVA Med. Rep.)", description: "Para un ANOVA de medidas repetidas, además de la normalidad, la esfericidad es un supuesto clave.", assumptions: "Normalidad en cada medición y esfericidad (p > .05).", howToCheckTitle: "Pruebas a realizar:", howToCheck: "<b>1. Normalidad:</b> Comprueba la normalidad (ej. <b>Shapiro-Wilk</b>) para cada una de las mediciones.<br><b>2. Esfericidad:</b> Usa la <b>Prueba de Mauchly</b>. Si el resultado es no significativo (p > .05), el supuesto de esfericidad se cumple.<br><br><b>Decisión:</b> Si se cumplen ambos, usa el <b>ANOVA de medidas repetidas</b>. Si se viola la esfericidad (p <= .05), debes usar los valores del ANOVA con una corrección (ej. <b>Greenhouse-Geisser</b> o <b>Huynh-Feldt</b>). Si la normalidad no se cumple, la alternativa no paramétrica es la <b>Prueba de Friedman</b>.", software: "SPSS, R, JASP, Jamovi.", resources: "" },
+                // --- Resultados de Pruebas ---
+                res_t_test_independent: { title: "Prueba t para Muestras Independientes", description: "Se utiliza para comparar las medias de dos grupos independientes. Es una prueba paramétrica fundamental.", assumptions: "1. Variable dependiente continua. 2. Independencia de las observaciones. 3. Distribución normal en cada grupo. 4. Homogeneidad de varianzas (igualdad de varianzas).", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://www.cienciadedatos.net/documentos/pystad_t-test.html" target="_blank" class="text-blue-600 hover:underline">Más información sobre la Prueba t</a>' },
+                res_mann_whitney: { title: "Prueba U de Mann-Whitney", description: "Alternativa no paramétrica a la prueba t para muestras independientes. Compara rangos en lugar de medias, por lo que no requiere normalidad.", assumptions: "1. Variable dependiente ordinal o continua. 2. Independencia de las observaciones. Las distribuciones de ambos grupos deben tener la misma forma.", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://humanidades.com/prueba-u-de-mann-whitney/" target="_blank" class="text-blue-600 hover:underline">Más información sobre U de Mann-Whitney</a>' },
+                res_anova_oneway: { title: "ANOVA de un Factor (One-Way ANOVA)", description: "Permite comparar las medias de tres o más grupos independientes. Si encuentras diferencias significativas, necesitarás pruebas post-hoc (ej. Bonferroni, Tukey) para ver qué grupos específicos difieren.", assumptions: "Mismas que la prueba t (normalidad, homogeneidad de varianzas, independencia) pero aplicadas a todos los grupos.", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://www.questionpro.com/blog/es/anova-de-un-factor/" target="_blank" class="text-blue-600 hover:underline">Más información sobre ANOVA de un Factor</a>' },
+                res_ancova: { title: "ANCOVA (Análisis de la Covarianza)", description: "Es una extensión del ANOVA que permite comparar las medias de tres o más grupos mientras se controla estadísticamente el efecto de una o más variables continuas (covariables).", assumptions: "Supuestos del ANOVA + 1. Independencia de la covariable y la variable independiente. 2. Relación lineal entre la covariable y la variable dependiente.", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://www.datanovia.com/en/lessons/ancova-in-r/" target="_blank" class="text-blue-600 hover:underline">Más información sobre ANCOVA</a>' },
+                res_kruskal_wallis: { title: "Prueba de Kruskal-Wallis", description: "Alternativa no paramétrica al ANOVA de un factor. Se usa para comparar tres o más grupos independientes cuando no se cumplen los supuestos paramétricos.", assumptions: "1. Variable dependiente ordinal o continua. 2. Independencia de las observaciones. 3. Las distribuciones de todos los grupos deben tener formas similares.", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://www.addlink.es/noticias/minitab/2833-cuando-utilizar-la-prueba-de-kruskal-wallis" target="_blank" class="text-blue-600 hover:underline">Más información sobre Kruskal-Wallis</a>' },
+                res_t_test_related: { title: "Prueba t para Muestras Relacionadas (Pareadas)", description: "Compara las medias de dos mediciones tomadas de los mismos sujetos (ej. antes y después).", assumptions: "1. Las diferencias entre las mediciones pareadas deben seguir una distribución normal.", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://proyectodescartes.org/inferencia/materiales_didacticos/estim_contraste_param-JS/t_muestras_pareadas.html" target="_blank" class="text-blue-600 hover:underline">Más información sobre Prueba t Pareada</a>' },
+                res_wilcoxon: { title: "Prueba de los Rangos con Signo de Wilcoxon", description: "Alternativa no paramétrica a la prueba t pareada. Se usa cuando las diferencias entre las mediciones no son normales.", assumptions: "La distribución de las diferencias entre pares es simétrica.", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://www.cienciadedatos.net/documentos/pystad_wilcoxon_rank_sum_test.html" target="_blank" class="text-blue-600 hover:underline">Más sobre la Prueba de Wilcoxon</a>' },
+                res_rm_anova: { title: "ANOVA de Medidas Repetidas", description: "Compara las medias de tres o más mediciones de los mismos sujetos. Es la extensión de la prueba t pareada.", assumptions: "1. Normalidad. 2. Esfericidad (las varianzas de las diferencias entre todas las combinaciones de mediciones son iguales). Si no se cumple, se usan correcciones (Greenhouse-Geisser, Huynh-Feldt).", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://investigaliacr.com/investigacion/anova-para-medidas-repetidas-de-un-factor/" target="_blank" class="text-blue-600 hover:underline">Más sobre ANOVA de Medidas Repetidas</a>' },
+                res_friedman: { title: "Prueba de Friedman", description: "Alternativa no paramétrica al ANOVA de medidas repetidas. Se basa en rangos.", assumptions: "No requiere normalidad ni esfericidad, lo que la hace muy robusta.", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://www.questionpro.com/blog/es/prueba-de-friedman/" target="_blank" class="text-blue-600 hover:underline">Más sobre la Prueba de Friedman</a>' },
+                res_pearson: { title: "Correlación de Pearson (r)", description: "Mide el grado y la dirección de la asociación lineal entre dos variables continuas.", assumptions: "1. Ambas variables son continuas. 2. Relación lineal entre ellas. 3. Normalidad bivariada.", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://www.questionpro.com/blog/es/coeficiente-de-correlacion-de-pearson/" target="_blank" class="text-blue-600 hover:underline">Más sobre la Correlación de Pearson</a>' },
+                res_partial_pearson: { title: "Correlación Parcial de Pearson", description: "Mide la relación lineal entre dos variables continuas, después de eliminar el efecto de una o más variables de control.", assumptions: "Supuestos de la correlación de Pearson, aplicados a los residuos del modelo.", software: "SPSS, R, Python.", resources: '<a href="https://www.statology.org/partial-correlation-in-r/" target="_blank" class="text-blue-600 hover:underline">Más sobre Correlación Parcial</a>' },
+                res_spearman: { title: "Correlación de Spearman (rho)", description: "Mide la fuerza y dirección de la asociación monotónica (no necesariamente lineal) entre dos variables. Funciona con rangos.", assumptions: "Las variables son al menos ordinales. No requiere normalidad.", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://www.addlink.es/noticias/minitab/2821-correlacion-de-spearman-la-guia-sencilla" target="_blank" class="text-blue-600 hover:underline">Más sobre la Correlación de Spearman</a>' },
+                res_partial_spearman: { title: "Correlación Parcial de Spearman", description: "Mide la relación monotónica entre dos variables, después de eliminar el efecto de una o más variables de control. Es la versión no paramétrica de la correlación parcial.", assumptions: "Las variables son al menos ordinales.", software: "R (packages como 'ppcor'), Python (biblioteca 'pingouin').", resources: '<a href="https://www.statology.org/partial-correlation-python/" target="_blank" class="text-blue-600 hover:underline">Más sobre Correlación Parcial (no paramétrica)</a>' },
+                res_chi_square: { title: "Prueba de Chi-Cuadrado (χ²) de Independencia", description: "Determina si existe una asociación significativa entre dos variables categóricas.", assumptions: "1. Ambas variables son categóricas. 2. Frecuencia esperada en cada celda > 5 (si no, usar Prueba Exacta de Fisher).", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://www.jmp.com/es_es/statistics-knowledge-portal/chi-square-test.html" target="_blank" class="text-blue-600 hover:underline">Más sobre Chi-Cuadrado</a>' },
+                res_linear_regression_simple: { title: "Regresión Lineal Simple", description: "Modela la relación entre una variable dependiente continua y UNA variable independiente para hacer predicciones. Ecuación: Y = b0 + b1*X.", assumptions: "1. Linealidad. 2. Independencia de los errores. 3. Homocedasticidad (varianza constante de los errores). 4. Normalidad de los errores.", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://www.ibm.com/es-es/analytics/learn/linear-regression" target="_blank" class="text-blue-600 hover:underline">Más sobre Regresión Lineal</a>' },
+                res_linear_regression_multiple: { title: "Regresión Lineal Múltiple", description: "Modela la relación entre una variable dependiente continua y DOS O MÁS variables independientes para hacer predicciones. Ecuación: Y = b0 + b1*X1 + b2*X2 + ...", assumptions: "Ídem que la simple, pero se añade el supuesto de no-multicolinealidad (los predictores no deben estar altamente correlacionados entre sí).", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://www.cienciadedatos.net/documentos/py10-regresion-lineal-multiple-python.html" target="_blank" class="text-blue-600 hover:underline">Más sobre Regresión Lineal Múltiple</a>' },
+                res_logistic_regression_simple: { title: "Regresión Logística Simple", description: "Modela la probabilidad de que ocurra un evento (variable dependiente categórica) en función de UNA variable predictora.", assumptions: "1. Variable dependiente categórica. 2. Independencia de los errores. 3. Relación lineal entre el predictor y el logit de la variable de resultado.", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://www.cienciadedatos.net/documentos/py17-regresion-logistica-python.html" target="_blank" class="text-blue-600 hover:underline">Más sobre Regresión Logística</a>' },
+                res_logistic_regression_multiple: { title: "Regresión Logística Múltiple", description: "Modela la probabilidad de que ocurra un evento (variable dependiente categórica) en función de DOS O MÁS variables predictoras.", assumptions: "Ídem que la simple, más el supuesto de no-multicolinealidad.", software: "SPSS, R, Python, JASP, Jamovi.", resources: '<a href="https://www.datanovia.com/en/lessons/multiple-logistic-regression-in-r/" target="_blank" class="text-blue-600 hover:underline">Más sobre Regresión Logística Múltiple</a>' },
+                res_cronbach_alpha: { title: "Alfa de Cronbach (α)", description: "Es la medida más común de fiabilidad de consistencia interna para un conjunto de ítems de una escala. Valores > 0.70 suelen considerarse aceptables.", assumptions: "1. Los ítems miden un único constructo (unidimensionalidad). 2. Los ítems son al menos de nivel de intervalo.", software: "SPSS, R, JASP, Jamovi.", resources: '<a href="https://www.questionpro.com/blog/es/alfa-de-cronbach/" target="_blank" class="text-blue-600 hover:underline">Más sobre Alfa de Cronbach</a>' },
+                res_cohen_kappa: { title: "Kappa de Cohen (κ)", description: "Mide el nivel de acuerdo entre dos evaluadores o jueces, corrigiendo el acuerdo que podría deberse al azar.", assumptions: "1. Los datos son categóricos. 2. Los evaluadores son independientes.", software: "SPSS, R, JASP, Jamovi.", resources: '<a href="https://universidadeuropea.com/blog/coeficiente-kappa-cohen/" target="_blank" class="text-blue-600 hover:underline">Más sobre Kappa de Cohen</a>' },
+                res_efa: { title: "Análisis Factorial Exploratorio (AFE)", description: "Técnica para identificar la estructura subyacente de un conjunto de variables. Se utiliza para agrupar variables en 'factores' o 'dimensiones' conceptuales.", assumptions: "1. Datos continuos u ordinales. 2. Relaciones lineales entre las variables. 3. Muestra suficientemente grande (se recomiendan >100-200 casos).", software: "SPSS, R (psych package), JASP, Jamovi.", resources: '<a href="https://explorable.com/es/analisis-factorial-exploratorio" target="_blank" class="text-blue-600 hover:underline">Más sobre AFE</a>' },
+                res_cfa: { title: "Análisis Factorial Confirmatorio (AFC)", description: "Se utiliza para probar una hipótesis sobre la estructura de las variables latentes. Es parte de los Modelos de Ecuaciones Estructurales (SEM).", assumptions: "1. Modelo teóricamente fundamentado. 2. Muestra grande. 3. Normalidad multivariante (aunque hay estimadores robustos).", software: "R (lavaan package), AMOS, Mplus, JASP.", resources: '<a href="https://www.psicologia-online.com/analisis-factorial-confirmatorio-que-es-y-como-se-realiza-5437.html" target="_blank" class="text-blue-600 hover:underline">Más sobre AFC</a>' },
+            };
+
+            // --- 4. FUNCIONES DE LA APLICACIÓN ---
+
+            const showMessage = (text = '', show = false) => {
+                dom.messageText.textContent = text;
+                dom.messageBox.classList.toggle('hidden', !show);
+            };
+
+            const saveState = () => {
+                try {
+                    localStorage.setItem('statsPlannerState', JSON.stringify(state));
+                } catch (e) {
+                    console.error("No se pudo guardar el estado:", e);
+                }
+            };
+            
+            const loadState = () => {
+                try {
+                    const savedState = localStorage.getItem('statsPlannerState');
+                    if (savedState) {
+                        state = JSON.parse(savedState);
+                        if (state.currentQuestionId && !state.currentQuestionId.startsWith('res_')) {
+                            dom.resumeText.classList.remove('hidden');
+                        }
+                    }
+                } catch (e) {
+                    console.error("No se pudo cargar el estado:", e);
+                    localStorage.removeItem('statsPlannerState');
+                }
+            };
+            
+            const updateUI = () => {
+                dom.backButton.classList.toggle('hidden', state.answers.length === 0);
+                const progress = state.answers.length / state.totalQuestions * 100;
+                dom.progressBar.style.width = `${Math.min(progress, 100)}%`;
+            };
+
+            const showQuestion = (questionId) => {
+                const qData = questions[questionId];
+                if (!qData) return;
+
+                state.currentQuestionId = questionId;
+                dom.questionText.innerHTML = qData.text;
+                dom.optionsForm.innerHTML = '';
+                showMessage('', false);
+
+                if (qData.type === 'radio') {
+                    qData.options.forEach((option, index) => {
+                        const optionId = `option_${index}`;
+                        const div = document.createElement('div');
+                        div.className = 'block';
+                        div.innerHTML = `
+                            <label for="${optionId}" class="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors">
+                                <input type="radio" id="${optionId}" name="option" value="${option.next}" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                                <span class="ml-3 text-gray-700">${option.text}</span>
+                            </label>`;
+                        dom.optionsForm.appendChild(div);
+                    });
+                } else if (qData.type === 'numberInput') {
+                    const inputId = `input_${questionId}`;
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <label for="${inputId}" class="sr-only">${qData.text}</label>
+                        <input type="number" id="${inputId}" min="${qData.min}" 
+                               placeholder="${qData.placeholder}" 
+                               class="w-full px-4 py-3 text-lg text-center border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                    `;
+                    dom.optionsForm.appendChild(div);
+                    document.getElementById(inputId).focus();
+                }
+                
+                updateUI();
+                saveState();
+            };
+            
+            const showResult = (resultId) => {
+                const resultData = results[resultId];
+                if (!resultData) return;
+
+                state.currentQuestionId = resultId;
+                
+                let title = resultData.title;
+                 if (resultId === 'res_anova_oneway' && state.userInputs.q_n_independent) {
+                    title += ` (para ${state.userInputs.q_n_independent} grupos)`;
+                } else if (resultId === 'res_rm_anova' && state.userInputs.q_n_related) {
+                     title += ` (para ${state.userInputs.q_n_related} mediciones)`;
+                }
+
+                dom.resultTitle.textContent = title;
+                dom.resultDescription.innerHTML = resultData.description;
+                dom.resultAssumptions.innerHTML = resultData.assumptions;
+                dom.resultSoftware.innerHTML = resultData.software;
+                dom.resultResources.innerHTML = resultData.resources;
+
+                // Mostrar/ocultar sección de "Cómo comprobar"
+                if(resultData.howToCheck){
+                    dom.resultHowToCheck.innerHTML = resultData.howToCheck;
+                    dom.howToCheckContainer.classList.remove('hidden');
+                } else {
+                    dom.howToCheckContainer.classList.add('hidden');
+                }
+
+                dom.questionSection.classList.add('hidden');
+                dom.resultSection.classList.remove('hidden');
+                dom.resultSection.classList.add('fade-in');
+                saveState();
+            };
+
+            const handleNext = () => {
+                const qData = questions[state.currentQuestionId];
+                let nextQuestionId = null;
+                let userAnswer = null;
+
+                if (qData.type === 'radio') {
+                    const selectedOption = dom.optionsForm.querySelector('input[name="option"]:checked');
+                    if (!selectedOption) {
+                        showMessage('Por favor, selecciona una opción para continuar.', true);
+                        return;
+                    }
+                    nextQuestionId = selectedOption.value;
+                    userAnswer = { type: 'radio', value: selectedOption.id };
+                } else if (qData.type === 'numberInput') {
+                    const inputElem = dom.optionsForm.querySelector('input[type="number"]');
+                    const value = parseInt(inputElem.value, 10);
+                    
+                    if (isNaN(value) || value < qData.min) {
+                        showMessage(`Por favor, introduce un número válido. El mínimo es ${qData.min}.`, true);
+                        return;
+                    }
+                    nextQuestionId = qData.next(value);
+                    userAnswer = { type: 'numberInput', value: value };
+                    state.userInputs[qData.id] = value;
+                }
+
+                if (!nextQuestionId) return;
+
+                state.answers.push({ from: state.currentQuestionId, answer: userAnswer });
+
+                if (nextQuestionId.startsWith('res_')) {
+                    showResult(nextQuestionId);
+                } else {
+                    showQuestion(nextQuestionId);
+                }
+            };
+
+            const handleBack = () => {
+                if (state.answers.length === 0) return;
+                
+                const lastAnswer = state.answers.pop();
+                const previousQuestionId = lastAnswer.from;
+                
+                if (state.userInputs[previousQuestionId]) {
+                    delete state.userInputs[previousQuestionId];
+                }
+
+                showQuestion(previousQuestionId);
+                
+                const qData = questions[previousQuestionId];
+                if (lastAnswer.answer.type === 'radio') {
+                    const radioToSelect = document.getElementById(lastAnswer.answer.value);
+                    if(radioToSelect) radioToSelect.checked = true;
+                } else if (qData.type === 'numberInput') {
+                    const inputElem = dom.optionsForm.querySelector('input[type="number"]');
+                    if(inputElem) inputElem.value = lastAnswer.answer.value;
+                }
+            };
+            
+            const startQuiz = (resume = false) => {
+                if (!resume) {
+                    state.currentQuestionId = 'q_initial'; // Empezar desde la nueva pregunta inicial
+                    state.answers = [];
+                    state.userInputs = {};
+                }
+                
+                dom.startSection.classList.add('hidden');
+                dom.resultSection.classList.add('hidden');
+                dom.questionSection.classList.remove('hidden');
+                dom.questionSection.classList.add('fade-in');
+
+                showQuestion(state.currentQuestionId);
+            };
+
+            const resetApp = () => {
+                 state = { currentQuestionId: null, answers: [], userInputs: {}, totalQuestions: 8 };
+                 localStorage.removeItem('statsPlannerState');
+                 dom.resultSection.classList.add('hidden');
+                 dom.questionSection.classList.add('hidden');
+                 dom.startSection.classList.remove('hidden');
+                 dom.startSection.classList.add('fade-in');
+                 dom.resumeText.classList.add('hidden');
+                 closeRestartModal();
+            };
+
+            const openRestartModal = () => {
+                dom.restartModal.classList.remove('hidden');
+            };
+            
+            const closeRestartModal = () => {
+                dom.restartModal.classList.add('hidden');
+            };
+            
+            const copyResult = () => {
+                const title = dom.resultTitle.textContent.trim();
+                const description = `Descripción: ${dom.resultDescription.textContent.trim()}`;
+                const assumptions = `Supuestos Clave: ${dom.resultAssumptions.textContent.trim()}`;
+                let howToCheck = '';
+                if(!dom.howToCheckContainer.classList.contains('hidden')){
+                    howToCheck = `Cómo Comprobar: ${dom.resultHowToCheck.textContent.trim().replace(/<br>/g, '\n')}`;
+                }
+
+                const textToCopy = [title, description, assumptions, howToCheck].filter(Boolean).join('\n\n');
+
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    dom.copyButtonText.textContent = '¡Copiado!';
+                    dom.copyButton.classList.replace('bg-green-600', 'bg-blue-500');
+                    setTimeout(() => {
+                        dom.copyButtonText.textContent = 'Copiar al Portapapeles';
+                        dom.copyButton.classList.replace('bg-blue-500', 'bg-green-600');
+                    }, 2000);
+                }).catch(err => {
+                     console.error('Error al copiar con navigator.clipboard:', err);
+                     // Fallback para entornos inseguros
+                    const textArea = document.createElement('textarea');
+                    textArea.value = textToCopy;
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                        dom.copyButtonText.textContent = '¡Copiado!';
+                    } catch (e) {
+                         console.error('Error con execCommand:', e);
+                    }
+                    document.body.removeChild(textArea);
+                });
+            };
+
+            // --- 5. EVENT LISTENERS ---
+            dom.startButton.addEventListener('click', () => startQuiz(false));
+            dom.resumeLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                startQuiz(true);
+            });
+            dom.nextButton.addEventListener('click', handleNext);
+            dom.backButton.addEventListener('click', handleBack);
+            dom.restartButton.addEventListener('click', openRestartModal);
+            dom.confirmRestart.addEventListener('click', resetApp);
+            dom.cancelRestart.addEventListener('click', closeRestartModal);
+            dom.copyButton.addEventListener('click', copyResult);
+            dom.printButton.addEventListener('click', () => window.print());
+            dom.questionSection.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const qData = questions[state.currentQuestionId];
+                    if (qData.type === 'numberInput') {
+                         e.preventDefault();
+                         handleNext();
+                    }
+                }
+            });
+
+            // --- 6. INICIALIZACIÓN ---
+            dom.currentYear.textContent = new Date().getFullYear();
+            loadState();
+
+        })();
+    </script>
+</body>
+</html>
